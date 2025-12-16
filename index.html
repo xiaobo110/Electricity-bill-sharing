@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>智能房租电费分摊计算器</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/style.css">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+</head>
+<body>
+  <div id="app">
+    <button class="theme-toggle" @click="toggleDarkMode">
+      <i class="toggle-icon" :class="isDarkMode ? 'fas fa-sun' : 'fas fa-moon'"></i>
+    </button>
+
+    <div class="container">
+      <header>
+        <div class="logo">
+          <i class="logo-icon fas fa-calculator"></i>
+          <div>
+            <h1>✨ 智能房租电费分摊计算器</h1>
+            <p class="subtitle">公平、透明、易用的合租费用分摊工具</p>
+          </div>
+        </div>
+      </header>
+
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-sliders-h"></i> 账单信息
+        </div>
+        <div class="card-body">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="start"><i class="fas fa-calendar-alt"></i> 开始日期</label>
+              <input type="date" id="start" v-model="startDate" @change="calculate" />
+            </div>
+            
+            <div class="form-group">
+              <label for="end"><i class="fas fa-calendar-alt"></i> 结束日期</label>
+              <input type="date" id="end" v-model="endDate" @change="calculate" />
+            </div>
+            
+            <div class="form-group">
+              <label for="totalFee"><i class="fas fa-money-bill-wave"></i> 总电费 (元)</label>
+              <input 
+                type="number" 
+                id="totalFee" 
+                v-model.number="totalFee" 
+                step="0.01" 
+                min="0" 
+                placeholder="请输入总电费"
+                @input="calculate" 
+              />
+            </div>
+            
+            <div class="form-group">
+              <label for="meterReading"><i class="fas fa-tachometer-alt"></i> 电表读数 (度)</label>
+              <input 
+                type="number" 
+                id="meterReading" 
+                v-model.number="meterReading" 
+                min="0" 
+                placeholder="可选，记录电表读数"
+                @input="calculate" 
+              />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label><i class="fas fa-sticky-note"></i> 账单备注</label>
+            <textarea 
+              v-model="billNote" 
+              rows="2" 
+              placeholder="添加账单备注，如：夏季空调使用较多..."
+              @input="calculate"
+            ></textarea>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-users"></i> 住户信息
+        </div>
+        <div class="card-body">
+          <div class="mode-selector">
+            <button 
+              class="mode-btn" 
+              :class="{ 'active': allocationMode === 'days' }"
+              @click="setAllocationMode('days')"
+            >
+              <i class="fas fa-clock"></i> 按居住天数
+            </button>
+            <button 
+              class="mode-btn" 
+              :class="{ 'active': allocationMode === 'fixed' }"
+              @click="setAllocationMode('fixed')"
+            >
+              <i class="fas fa-percentage"></i> 按固定比例
+            </button>
+            <button 
+              class="mode-btn" 
+              :class="{ 'active': allocationMode === 'area' }"
+              @click="setAllocationMode('area')"
+            >
+              <i class="fas fa-ruler-combined"></i> 按房间面积
+            </button>
+          </div>
+
+          <div class="occupant-list" ref="occupantList">
+            <div 
+              v-for="(occupant, index) in occupants" 
+              :key="occupant.id" 
+              class="occupant-card"
+              :data-index="index"
+              @mousedown="startDrag"
+            >
+              <div class="drag-handle">
+                <i class="fas fa-grip-lines"></i>
+              </div>
+              
+              <div class="form-group" style="flex: 2; min-width: 150px;">
+                <label :for="'name'+index"><i class="fas fa-user"></i> 姓名</label>
+                <input 
+                  type="text" 
+                  :id="'name'+index" 
+                  v-model="occupant.name" 
+                  placeholder="住户姓名"
+                />
+              </div>
+              
+              <div class="form-group" style="flex: 1; min-width: 120px;" v-if="allocationMode === 'days'">
+                <label :for="'days'+index"><i class="fas fa-business-time"></i> 居住天数</label>
+                <input 
+                  type="number" 
+                  :id="'days'+index" 
+                  v-model.number="occupant.days" 
+                  min="0"
+                />
+              </div>
+              
+              <div class="form-group" style="flex: 1; min-width: 120px;" v-if="allocationMode === 'fixed'">
+                <label :for="'ratio'+index"><i class="fas fa-balance-scale"></i> 比例 (%)</label>
+                <input 
+                  type="number" 
+                  :id="'ratio'+index" 
+                  v-model.number="occupant.ratio" 
+                  min="0"
+                  max="100"
+                  @input="adjustRatios(index)"
+                />
+              </div>
+              
+              <div class="form-group" style="flex: 1; min-width: 120px;" v-if="allocationMode === 'area'">
+                <label :for="'area'+index"><i class="fas fa-ruler-combined"></i> 房间面积 (㎡)</label>
+                <input 
+                  type="number" 
+                  :id="'area'+index" 
+                  v-model.number="occupant.area" 
+                  min="0"
+                  step="0.1"
+                />
+              </div>
+              
+              <div class="form-group" style="flex: 1; min-width: 120px;">
+                <label><i class="fas fa-adjust"></i> 调整金额 (±)</label>
+                <input 
+                  type="number" 
+                  v-model.number="occupant.adjustment" 
+                  step="0.01"
+                  placeholder="±0.00"
+                />
+              </div>
+              
+              <div class="occupant-actions">
+                <button class="btn btn-sm btn-danger" @click="removeOccupant(index)">
+                  <i class="fas fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+          
+          <button class="btn btn-secondary" @click="addOccupant">
+            <i class="fas fa-user-plus"></i> 添加住户
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <i class="fas fa-calculator"></i> 计算结果
+        </div>
+        <div class="card-body">
+          <button class="btn btn-primary btn-block" @click="calculate">
+            <i class="fas fa-bolt"></i> 立即计算电费分摊
+          </button>
+          
+          <div v-if="error" class="toast error show" style="position: relative; transform: none; margin: 20px 0;">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>{{ error }}</span>
+          </div>
+          
+          <div v-if="result" class="result-container">
+            <div class="summary-cards">
+              <div class="summary-card">
+                <div class="summary-label">总费用</div>
+                <div class="summary-value">¥{{ result.totalFee.toFixed(2) }}</div>
+                <div>{{ result.totalDays || result.totalArea || '总计' }}</div>
+              </div>
+              <div class="summary-card warning">
+                <div class="summary-label">人均费用</div>
+                <div class="summary-value">¥{{ (result.totalFee / occupants.length).toFixed(2) }}</div>
+                <div>{{ occupants.length }} 位住户</div>
+              </div>
+              <div class="summary-card success">
+                <div class="summary-label">计算方式</div>
+                <div class="summary-value">
+                  <i :class="{
+                    'fas fa-clock': allocationMode === 'days',
+                    'fas fa-percentage': allocationMode === 'fixed',
+                    'fas fa-ruler-combined': allocationMode === 'area'
+                  }"></i>
+                </div>
+                <div>{{ getAllocationModeText() }}</div>
+              </div>
+            </div>
+            
+            <div class="tabs">
+              <div class="tab" :class="{ 'active': activeTab === 'detail' }" @click="activeTab = 'detail'">
+                <i class="fas fa-list"></i> 详细分摊
+              </div>
+              <div class="tab" :class="{ 'active': activeTab === 'chart' }" @click="activeTab = 'chart'">
+                <i class="fas fa-chart-pie"></i> 可视化
+              </div>
+              <div class="tab" :class="{ 'active': activeTab === 'history' }" @click="activeTab = 'history'">
+                <i class="fas fa-history"></i> 历史记录
+              </div>
+            </div>
+            
+            <div v-show="activeTab === 'detail'">
+              <table class="result-table">
+                <thead>
+                  <tr>
+                    <th><i class="fas fa-user"></i> 姓名</th>
+                    <th v-if="allocationMode === 'days'"><i class="fas fa-business-time"></i> 居住天数</th>
+                    <th v-if="allocationMode === 'fixed'"><i class="fas fa-percentage"></i> 比例</th>
+                    <th v-if="allocationMode === 'area'"><i class="fas fa-ruler-combined"></i> 面积 (㎡)</th>
+                    <th><i class="fas fa-percentage"></i> 占比</th>
+                    <th><i class="fas fa-money-bill-wave"></i> 应缴电费 (元)</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(item, index) in result.items" :key="index">
+                    <td><strong>{{ item.name }}</strong></td>
+                    <td v-if="allocationMode === 'days'">{{ item.days }}</td>
+                    <td v-if="allocationMode === 'fixed'">{{ (item.percentage * 100).toFixed(1) }}%</td>
+                    <td v-if="allocationMode === 'area'">{{ item.area }} ㎡</td>
+                    <td>{{ (item.finalPercentage * 100).toFixed(1) }}%</td>
+                    <td :class="{ 'warning': item.adjustment !== 0 }">¥{{ item.finalFee.toFixed(2) }}<span v-if="item.adjustment !== 0" class="adjustment-badge">({{ item.adjustment > 0 ? '+' : '' }}{{ item.adjustment.toFixed(2) }})</span></td>
+                  </tr>
+                  <tr class="total-row">
+                    <td><strong>总计</strong></td>
+                    <td v-if="allocationMode === 'days'"><strong>{{ result.totalDays }}</strong></td>
+                    <td v-if="allocationMode === 'fixed'"></td>
+                    <td v-if="allocationMode === 'area'"><strong>{{ result.totalArea.toFixed(1) }}</strong></td>
+                    <td><strong>100%</strong></td>
+                    <td><strong>¥{{ result.totalCalculated.toFixed(2) }}</strong></td>
+                  </tr>
+                </tbody>
+              </table>
+              
+              <div class="share-section">
+                <h3 style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                  <i class="fas fa-share-alt"></i> 分享与导出
+                </h3>
+                <div class="share-btns">
+                  <button class="btn btn-secondary" @click="exportToCSV">
+                    <i class="fas fa-file-csv"></i> 导出 CSV
+                  </button>
+                  <button class="btn btn-secondary" @click="printResult">
+                    <i class="fas fa-print"></i> 打印结果
+                  </button>
+                  <button class="btn btn-secondary" @click="copyShareLink">
+                    <i class="fas fa-link"></i> 复制分享链接
+                  </button>
+                </div>
+                <input v-if="shareLink" type="text" class="share-link" :value="shareLink" readonly @click="copyShareLink" />
+              </div>
+            </div>
+            
+            <div v-show="activeTab === 'chart'" class="chart-container">
+              <canvas ref="chartCanvas"></canvas>
+            </div>
+            
+            <div v-show="activeTab === 'history'">
+              <div v-if="history.length === 0" class="history-empty">
+                <i class="fas fa-history" style="font-size: 3rem; color: #cbd5e1; margin-bottom: 15px;"></i>
+                <p>暂无历史记录，计算完成后会自动保存</p>
+              </div>
+              <div v-else>
+                <div class="history-item" v-for="(item, index) in history" :key="index">
+                  <div class="history-date">
+                    <i class="fas fa-calendar"></i> {{ formatDate(item.date) }} 
+                    <span style="float: right; color: var(--primary-color);">
+                      <i class="fas fa-money-bill-wave"></i> ¥{{ item.totalFee.toFixed(2) }}
+                    </span>
+                  </div>
+                  <div style="font-weight: 600; margin-bottom: 5px;">
+                    {{ item.startDate }} 至 {{ item.endDate }}
+                  </div>
+                  <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+                    <span v-for="(occupant, oIndex) in item.items" :key="oIndex">
+                      <strong>{{ occupant.name }}:</strong> ¥{{ occupant.finalFee.toFixed(2) }}
+                    </span>
+                  </div>
+                  <div style="margin-top: 10px; display: flex; gap: 10px;">
+                    <button class="btn btn-sm btn-secondary" @click="loadHistory(item)">
+                      <i class="fas fa-undo"></i> 还原
+                    </button>
+                    <button class="btn btn-sm btn-danger" @click="deleteHistory(index)">
+                      <i class="fas fa-trash"></i> 删除
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <footer>
+        <p>© 2023 租房电费分摊计算器 | 让合租更公平、更透明</p>
+        <p style="margin-top: 8px; font-size: 0.9rem; color: #94a3b8;">
+          <i class="fas fa-lightbulb"></i> 小提示：点击图表上的条形可以查看详细信息
+        </p>
+      </footer>
+    </div>
+    
+    <div class="toast" :class="toast.type" :style="{ display: toast.visible ? 'flex' : 'none' }">
+      <i :class="{
+        'fas fa-check-circle': toast.type === 'success',
+        'fas fa-exclamation-circle': toast.type === 'error',
+        'fas fa-info-circle': toast.type === 'warning'
+      }"></i>
+      <span>{{ toast.message }}</span>
+    </div>
+  </div>
+
+  <script src="js/main.js"></script>
+</body>
+</html>
