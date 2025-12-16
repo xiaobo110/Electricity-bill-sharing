@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "yarn build && gh-pages -d dist"
   },
   "dependencies": {
     "bootstrap": "^5.2.3",
@@ -18,6 +19,7 @@
   "devDependencies": {
     "@popperjs/core": "^2.11.8",
     "@vitejs/plugin-vue": "^4.5.2",
+    "gh-pages": "^6.3.0",
     "sass": "^1.69.5",
     "vite": "^4.5.14"
   }
