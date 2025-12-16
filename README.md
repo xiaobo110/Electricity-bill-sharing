@@ -52,7 +52,7 @@ git clone https://github.com/xiaobo110/Electricity-bill-sharing.git
 2. 进入项目目录：
 
 ```bash
-cd rent-electricity-calculator
+cd /
 ```
 
 3. 直接通过浏览器打开 `index.html` 文件，或使用本地服务器：
