@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "deploy": "yarn build && gh-pages -d dist"
+    "deploy": "git config --global user.email \"deploy@example.com\" && git config --global user.name \"Deploy Bot\" && yarn build && gh-pages -d dist"
   },
   "dependencies": {
     "bootstrap": "^5.2.3",
