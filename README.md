@@ -1,5 +1,87 @@
-# Vue 3 + Vite
+# 🏠 租房电费分摊计算器
 
-This template should help get you started developing with Vue 3 in Vite. The template uses Vue 3 `<script setup>` SFCs, check out the [script setup docs](https://v3.vuejs.org/api/sfc-script-setup.html#sfc-script-setup) to learn more.
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-1.0.0-brightgreen)]()
 
-Learn more about IDE Support for Vue in the [Vue Docs Scaling up Guide](https://vuejs.org/guide/scaling-up/tooling.html#ide-support).
+## 📌 项目简介
+
+租房电费分摊计算器是一款专为合租人群设计的实用工具，帮助用户公平、便捷地计算和分摊电费。本"全能美化版"在基础功能上进行了全面UI优化和功能增强，提供更直观的操作体验和更精准的计算结果。
+
+## ✨ 功能特点
+
+- **智能分摊算法**：支持按人头、按房间面积、按使用时段等多种分摊方式
+- **历史数据管理**：保存历史电费记录，便于查询和对比
+- **多设备用电分析**：可记录和分析不同电器的用电情况
+- **数据可视化**：通过图表直观展示用电量和费用分布
+- **一键导出**：支持将计算结果导出为PDF或Excel格式
+- **响应式设计**：完美适配手机、平板和电脑等各类设备
+- **暗黑模式**：保护夜间使用体验
+- **防误触设计**：优化计算触发机制，避免数据修改时频繁更新结果
+
+## 🚀 快速开始
+
+### 前置要求
+
+- 现代浏览器（Chrome、Firefox、Safari等最新版本）
+- 稳定的网络连接（用于首次加载资源）
+
+### 使用方法
+
+1. 打开应用页面
+2. 填写基础信息（总电费、租户信息等）
+3. 根据需要设置分摊规则
+4. **点击"立即计算电费分摊"按钮**获取结果（避免自动计算带来的频繁更新问题）
+5. 可选择保存、分享或导出计算结果
+
+## 🛠 技术栈
+
+- **前端**：HTML5, CSS3, JavaScript (ES6+)
+- **UI框架**：Bootstrap 5 + 自定义主题
+- **图表库**：Chart.js
+- **构建工具**：Webpack
+- **部署**：静态网站托管
+
+## 📦 部署说明
+
+1. 克隆本仓库：
+
+```bash
+git clone https://github.com/xiaobo110/Electricity-bill-sharing.git
+```
+
+2. 进入项目目录：
+
+```bash
+cd rent-electricity-calculator
+```
+
+3. 直接通过浏览器打开 `index.html` 文件，或使用本地服务器：
+
+```bash
+# 使用Python快速启动服务器
+python -m http.server 8000
+```
+
+4. 访问 `http://localhost:8000` 即可使用应用
+
+## ⚠️ 免责声明
+
+本计算器提供的结果仅供参考，实际电费分摊应根据租赁合同和当地电力政策执行。开发者不对计算结果的准确性承担法律责任。
+
+---
+
+<div align="center">
+  <p>----------</p>
+  <p><strong>本项目由阿里云ESA提供加速、计算和保护</strong></p>
+  <p>----------</p>
+  <img src="https://img.alicdn.com/imgextra/i3/O1CN01H1UU3i1Cti9lYtFrs_!!6000000000139-2-tps-7534-844.png" alt="阿里云ESA" width="800">
+</div>
+
+
+## 🙏 致谢
+
+感谢所有为本项目提供反馈和建议的用户，特别感谢开源社区的贡献和支持。
+
+---
+
+> 💡 **提示**：如在使用过程中遇到任何问题，或有功能建议，请通过 Issues 页面提交反馈，我们将尽快回复！
