@@ -8,7 +8,7 @@ export default defineConfig({
 
   // ✅ 更安全的 base 路径（适配 GitHub Pages 子路径）
   base: process.env.NODE_ENV === 'production'
-    ? '/Electricity-bill-sharing/'  // 替换为你的仓库名
+    ? '/'  // 替换为你的仓库名
     : '/',                          // 开发环境用根路径
 
   server: {
