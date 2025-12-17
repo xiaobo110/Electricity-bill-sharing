@@ -27,7 +27,7 @@
 1. 克隆项目：
 
 ```bash
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/xiaobo110/Electricity-bill-sharing.git)
 ```
 
 2. 进入项目目录：
