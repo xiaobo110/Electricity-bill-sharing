@@ -6,7 +6,6 @@ const store = useCalculatorStore()
 
 // 表单数据
 const formData = ref({
-  totalElectricityBill: 0,
   startDate: '',
   endDate: '',
   allocationMethod: 'area'
@@ -22,6 +21,11 @@ const updateFormData = (field, value) => {
   store[field] = value
 }
 
+// 更新账单金额
+const updateBillAmount = (id, value) => {
+  store.updateBillAmount(id, value)
+}
+
 // 更新租户信息
 const updateTenant = (tenantId, field, value) => {
   const tenant = store.tenants.find(t => t.id === tenantId)
@@ -31,6 +35,14 @@ const updateTenant = (tenantId, field, value) => {
 }
 
 // 操作方法
+const addBillType = () => {
+  store.addBillType()
+}
+
+const removeBillType = (id) => {
+  store.removeBillType(id)
+}
+
 const addTenant = () => {
   store.addTenant()
 }
@@ -54,7 +66,6 @@ onMounted(() => {
     store.setDefaultDates()
   }
   
-  formData.value.totalElectricityBill = store.totalElectricityBill
   formData.value.startDate = store.startDate
   formData.value.endDate = store.endDate
   formData.value.allocationMethod = store.allocationMethod
@@ -63,22 +74,54 @@ onMounted(() => {
 
 <template>
   <div class="form-grid">
-    <!-- 总电费金额 -->
+    <!-- 费用信息 -->
     <div class="form-group">
-      <label for="totalElectricityBill">
-        <i class="fas fa-money-bill-wave"></i>
-        总电费金额 (元)
-      </label>
-      <input 
-        id="totalElectricityBill"
-        type="number" 
-        class="form-control" 
-        :value="formData.totalElectricityBill" 
-        @input="updateFormData('totalElectricityBill', $event.target.value)"
-        min="0" 
-        step="0.01"
-        placeholder="请输入总电费金额"
-      >
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <label class="mb-0">
+          <i class="fas fa-file-invoice-dollar"></i>
+          费用信息
+        </label>
+        <button class="btn btn-sm btn-secondary" @click="addBillType">
+          <i class="fas fa-plus-circle"></i> 添加费用类型
+        </button>
+      </div>
+      
+      <div class="bill-list">
+        <div v-for="bill in store.bills" :key="bill.id" class="bill-item">
+          <div class="bill-actions" v-if="store.bills.length > 1">
+            <button 
+              class="btn btn-sm btn-danger" 
+              @click="removeBillType(bill.id)"
+              title="删除费用类型"
+            >
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+          
+          <div class="form-group mb-0" style="flex: 1; min-width: 150px;">
+            <label class="form-label">
+              <i :class="bill.icon"></i>
+              {{ bill.name }} (元)
+            </label>
+            <input 
+              type="number" 
+              class="form-control form-control-sm" 
+              :value="bill.amount" 
+              @input="updateBillAmount(bill.id, $event.target.value)"
+              min="0" 
+              step="0.01"
+              placeholder="金额"
+            >
+          </div>
+        </div>
+      </div>
+      
+      <div class="mt-2">
+        <div class="alert alert-info mb-0">
+          <i class="fas fa-info-circle me-2"></i>
+          <small>总费用: <strong>¥{{ store.totalBillAmount.toFixed(2) }}</strong></small>
+        </div>
+      </div>
     </div>
     
     <!-- 起始日期 -->
@@ -116,7 +159,7 @@ onMounted(() => {
   <div class="form-group">
     <label for="allocationMethod">
       <i class="fas fa-share-alt"></i>
-      电费分摊方式
+      费用分摊方式
     </label>
     <select 
       id="allocationMethod"
@@ -331,6 +374,38 @@ onMounted(() => {
   transition: all 0.3s ease;
 }
 
+.bill-item {
+  background: #f8fafc;
+  border-radius: 10px;
+  padding: 1rem;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  position: relative;
+  transition: all 0.3s ease;
+  margin-bottom: 1rem;
+}
+
+.dark-mode .bill-item {
+  background: #334155;
+  border-color: #475569;
+}
+
+.bill-item:hover {
+  transform: translateX(5px);
+  border-color: var(--primary-color);
+}
+
+.bill-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 5px;
+}
+
 .occupant-card {
   background: #f8fafc;
   border-radius: 10px;
@@ -354,9 +429,28 @@ onMounted(() => {
   border-color: var(--primary-color);
 }
 
+.occupant-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  gap: 5px;
+}
+
 @media (max-width: 768px) {
   .form-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .bill-item {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .bill-actions {
+    position: absolute;
+    top: 10px;
+    right: 10px;
   }
   
   .occupant-card {

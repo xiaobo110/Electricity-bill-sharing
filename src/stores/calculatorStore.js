@@ -2,8 +2,15 @@ import { defineStore } from 'pinia'
 
 export const useCalculatorStore = defineStore('calculator', {
   state: () => ({
-    // 电费基础数据
-    totalElectricityBill: 0,
+    // 费用基础数据
+    bills: [
+      {
+        id: 'electricity',
+        name: '电费',
+        icon: 'fas fa-bolt',
+        amount: 0
+      }
+    ],
     startDate: '',
     endDate: '',
     
@@ -29,10 +36,54 @@ export const useCalculatorStore = defineStore('calculator', {
     
     totalOccupancyDays: (state) => {
       return state.tenants.reduce((sum, tenant) => sum + parseInt(tenant.occupancyDays || 0), 0)
+    },
+    
+    // 获取总费用
+    totalBillAmount: (state) => {
+      return state.bills.reduce((sum, bill) => sum + parseFloat(bill.amount || 0), 0)
     }
   },
   
   actions: {
+    // 添加费用类型
+    addBillType() {
+      const billTypes = [
+        { id: 'water', name: '水费', icon: 'fas fa-tint' },
+        { id: 'gas', name: '燃气费', icon: 'fas fa-fire' },
+        { id: 'property', name: '物业费', icon: 'fas fa-home' },
+        { id: 'internet', name: '网络费', icon: 'fas fa-wifi' },
+        { id: 'other', name: '其他费用', icon: 'fas fa-question-circle' }
+      ]
+      
+      const existingIds = this.bills.map(bill => bill.id)
+      const availableTypes = billTypes.filter(type => !existingIds.includes(type.id))
+      
+      if (availableTypes.length > 0) {
+        const newType = availableTypes[0]
+        this.bills.push({
+          id: newType.id,
+          name: newType.name,
+          icon: newType.icon,
+          amount: 0
+        })
+      }
+    },
+    
+    // 删除费用类型
+    removeBillType(id) {
+      if (this.bills.length > 1) {
+        this.bills = this.bills.filter(bill => bill.id !== id)
+      }
+    },
+    
+    // 更新费用金额
+    updateBillAmount(id, amount) {
+      const bill = this.bills.find(bill => bill.id === id)
+      if (bill) {
+        bill.amount = amount
+      }
+    },
+    
     // 添加租户
     addTenant() {
       const newId = this.tenants.length > 0 ? Math.max(...this.tenants.map(t => t.id)) + 1 : 1
@@ -91,7 +142,7 @@ export const useCalculatorStore = defineStore('calculator', {
     // 验证输入数据
     validateInput() {
       // 验证必要字段
-      if (!this.totalElectricityBill || this.totalElectricityBill <= 0) return false
+      if (this.totalBillAmount <= 0) return false
       if (!this.startDate || !this.endDate) return false
       if (new Date(this.startDate) >= new Date(this.endDate)) return false
       
@@ -106,16 +157,15 @@ export const useCalculatorStore = defineStore('calculator', {
       return true
     },
     
-    // 计算电费分摊
-    calculateElectricityAllocation() {
+    // 计算费用分摊
+    calculateAllocation() {
       if (!this.validateInput()) {
-        alert('请填写所有必填字段，并确保起始日期早于结束日期。')
-        return false
+        return { success: false, message: '请填写所有必填字段，并确保起始日期早于结束日期。' }
       }
       
       const result = {
         allocationDetails: [],
-        totalBill: parseFloat(this.totalElectricityBill),
+        totalBill: this.totalBillAmount,
         calculationDate: new Date().toISOString()
       }
       
@@ -145,7 +195,7 @@ export const useCalculatorStore = defineStore('calculator', {
       // 保存到历史记录
       this.saveToHistory(result)
       
-      return true
+      return { success: true }
     },
     
     // 按面积分摊
@@ -155,7 +205,7 @@ export const useCalculatorStore = defineStore('calculator', {
         return {
           tenantId: tenant.id,
           tenantName: tenant.name,
-          amount: this.totalElectricityBill * areaRatio,
+          amount: this.totalBillAmount * areaRatio,
           ratio: areaRatio,
           allocationBasis: '按面积分配',
           details: `房间面积: ${tenant.roomArea}平方米 (占比${(areaRatio * 100).toFixed(1)}%)`
@@ -165,7 +215,7 @@ export const useCalculatorStore = defineStore('calculator', {
     
     // 按人头分摊
     calculateByHeadcount() {
-      const perPersonAmount = this.totalElectricityBill / this.tenants.length
+      const perPersonAmount = this.totalBillAmount / this.tenants.length
       return this.tenants.map(tenant => ({
         tenantId: tenant.id,
         tenantName: tenant.name,
@@ -183,7 +233,7 @@ export const useCalculatorStore = defineStore('calculator', {
         return {
           tenantId: tenant.id,
           tenantName: tenant.name,
-          amount: this.totalElectricityBill * timeRatio,
+          amount: this.totalBillAmount * timeRatio,
           ratio: timeRatio,
           allocationBasis: '按时长分配',
           details: `居住天数: ${tenant.occupancyDays}天 (占比${(timeRatio * 100).toFixed(1)}%)`
@@ -218,7 +268,7 @@ export const useCalculatorStore = defineStore('calculator', {
         return {
           tenantId: tenant.id,
           tenantName: tenant.name,
-          amount: this.totalElectricityBill * ratio,
+          amount: this.totalBillAmount * ratio,
           ratio: ratio,
           allocationBasis: '按设备使用分配',
           details: `设备总功耗: ${deviceData.totalDevicePower.toFixed(2)}瓦时 (占比${(ratio * 100).toFixed(1)}%)`
@@ -252,7 +302,7 @@ export const useCalculatorStore = defineStore('calculator', {
         return {
           tenantId: tenant.id,
           tenantName: tenant.name,
-          amount: this.totalElectricityBill * ratio,
+          amount: this.totalBillAmount * ratio,
           ratio: ratio,
           allocationBasis: '自定义比例分配',
           details: `自定义比例: ${(ratio * 100).toFixed(1)}%`
@@ -265,7 +315,8 @@ export const useCalculatorStore = defineStore('calculator', {
       const historyEntry = {
         id: Date.now(),
         dateRange: `${this.startDate} 至 ${this.endDate}`,
-        totalBill: this.totalElectricityBill,
+        totalBill: this.totalBillAmount,
+        bills: [...this.bills],
         allocationMethod: this.allocationMethod,
         details: result.allocationDetails,
         calculationDate: new Date().toLocaleString()

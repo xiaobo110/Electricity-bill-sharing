@@ -14,6 +14,8 @@ const props = defineProps({
 })
 
 const store = useCalculatorStore()
+const chartContainer = ref(null)
+const resultCard = ref(null)
 
 // 计算图表数据
 const chartData = computed(() => {
@@ -23,7 +25,7 @@ const chartData = computed(() => {
     labels: props.result.allocationDetails.map(item => item.tenantName),
     datasets: [
       {
-        label: '应缴电费 (元)',
+        label: '应缴费用 (元)',
         backgroundColor: [
           '#6366f1',
           '#8b5cf6',
@@ -118,19 +120,273 @@ const getAllocationMethodText = (basis) => {
 const recalculate = () => {
   store.clearResults()
 }
+
+// 打印/导出为PDF
+const printAsPDF = () => {
+  // 打开新的窗口显示打印报表
+  const printWindow = window.open('', '_blank')
+  printWindow.document.write([
+    '<!DOCTYPE html>',
+    '<html>',
+    '<head>',
+    '  <title>房租费用分摊报表</title>',
+    '  <meta charset="UTF-8">',
+    '  <style>',
+    '    body {',
+    '      font-family: \'Segoe UI\', Tahoma, Geneva, Verdana, sans-serif;',
+    '      max-width: 1000px;',
+    '      margin: 0 auto;',
+    '      padding: 20px;',
+    '    }',
+    '    .report-header {',
+    '      text-align: center;',
+    '      margin-bottom: 30px;',
+    '      border-bottom: 2px solid #6366f1;',
+    '      padding-bottom: 20px;',
+    '    }',
+    '    .report-header h1 {',
+    '      color: #6366f1;',
+    '      margin-bottom: 20px;',
+    '    }',
+    '    .report-meta {',
+    '      display: flex;',
+    '      justify-content: space-around;',
+    '      flex-wrap: wrap;',
+    '    }',
+    '    .report-meta p {',
+    '      margin: 5px 10px;',
+    '    }',
+    '    .report-content h2 {',
+    '      color: #334155;',
+    '      margin: 20px 0;',
+    '    }',
+    '    .report-table {',
+    '      width: 100%;',
+    '      border-collapse: collapse;',
+    '      margin: 20px 0;',
+    '    }',
+    '    .report-table th,',
+    '    .report-table td {',
+    '      border: 1px solid #cbd5e1;',
+    '      padding: 12px 15px;',
+    '      text-align: left;',
+    '    }',
+    '    .report-table th {',
+    '      background-color: #f1f5f9;',
+    '      font-weight: bold;',
+    '      color: #334155;',
+    '    }',
+    '    .report-table tbody tr:nth-child(even) {',
+    '      background-color: #f8fafc;',
+    '    }',
+    '    .report-table .amount {',
+    '      text-align: right;',
+    '    }',
+    '    .report-table .total-row {',
+    '      background-color: #e2e8f0 !important;',
+    '      font-weight: bold;',
+    '    }',
+    '    .report-footer {',
+    '      margin-top: 40px;',
+    '      padding-top: 20px;',
+    '      border-top: 1px solid #cbd5e1;',
+    '    }',
+    '    .report-footer p {',
+    '      margin: 10px 0;',
+    '      color: #64748b;',
+    '    }',
+    '    .timestamp {',
+    '      text-align: right;',
+    '      font-style: italic;',
+    '    }',
+    '    @media print {',
+    '      body {',
+    '        margin: 0;',
+    '        padding: 20px;',
+    '      }',
+    '    }',
+    '  </style>',
+    '</head>',
+    '<body>',
+    '  <div class="report-header">',
+    '    <h1>房租费用分摊报表</h1>',
+    '    <div class="report-meta">',
+    `      <p><strong>计费周期：</strong>${store.startDate} 至 ${store.endDate}</p>`,
+    `      <p><strong>分摊方式：</strong>${getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)}</p>`,
+    `      <p><strong>总费用：</strong>¥${props.result.totalBill.toFixed(2)}</p>`,
+    '    </div>',
+    '  </div>',
+    '  ',
+    '  <div class="report-content">',
+    '    <h2>租户分摊明细</h2>',
+    '    <table class="report-table">',
+    '      <thead>',
+    '        <tr>',
+    '          <th>租户</th>',
+    '          <th>分摊金额 (元)</th>',
+    '          <th>占比</th>',
+    '          <th>分摊依据</th>',
+    '          <th>说明</th>',
+    '        </tr>',
+    '      </thead>',
+    '      <tbody>',
+    ...props.result.allocationDetails.map(item => [
+      '        <tr>',
+      `          <td>${item.tenantName}</td>`,
+      `          <td class="amount">¥${item.amount.toFixed(2)}</td>`,
+      `          <td>${(item.ratio * 100).toFixed(1)}%</td>`,
+      `          <td>${item.allocationBasis}</td>`,
+      `          <td>${item.details}</td>`,
+      '        </tr>'
+    ].join('\n')),
+    '        <tr class="total-row">',
+    '          <td><strong>总计</strong></td>',
+    `          <td class="amount"><strong>¥${props.result.totalBill.toFixed(2)}</strong></td>`,
+    '          <td><strong>100%</strong></td>',
+    '          <td></td>',
+    '          <td></td>',
+    '        </tr>',
+    '      </tbody>',
+    '    </table>',
+    '  </div>',
+    '  ',
+    '  <div class="report-footer">',
+    '    <p>说明：以上分摊结果仅供参考，实际分摊应根据租赁合同约定执行。</p>',
+    `    <p class="timestamp">生成时间：${new Date().toLocaleString()}</p>`,
+    '  </div>',
+    '  ',
+    '  <script>',
+    '    // 页面加载完成后自动打印',
+    '    window.onload = function() {',
+    '      setTimeout(function() {',
+    '        window.print();',
+    '      }, 1000);',
+    '    };',
+    '  <\/script>',
+    '</body>',
+    '</html>'
+  ].join('\n'))
+  printWindow.document.close()
+}
+
+// 导出为图片（结构化报表形式）
+const exportAsImage = () => {
+  try {
+    // 创建一个隐藏的canvas元素用于绘制报表
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    
+    // 设置canvas尺寸
+    const width = 800
+    const height = 600
+    canvas.width = width
+    canvas.height = height
+    
+    // 设置背景色
+    ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#1e293b' : '#ffffff'
+    ctx.fillRect(0, 0, width, height)
+    
+    // 设置字体和颜色
+    ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#ffffff' : '#000000'
+    ctx.font = 'bold 24px Arial'
+    ctx.textAlign = 'center'
+    ctx.fillText('房租费用分摊报表', width/2, 40)
+    
+    // 基本信息
+    ctx.font = '16px Arial'
+    ctx.textAlign = 'left'
+    ctx.fillText(`计费周期: ${store.startDate} 至 ${store.endDate}`, 50, 80)
+    
+    const methodText = getAllocationMethodText(props.result.allocationDetails[0].allocationBasis)
+    ctx.fillText(`分摊方式: ${methodText}`, 50, 110)
+    ctx.fillText(`总费用: ¥${props.result.totalBill.toFixed(2)}`, 50, 140)
+    
+    // 绘制表格
+    const rowHeight = 30
+    const startY = 180
+    const columns = ['租户', '分摊金额(元)', '占比', '分摊依据', '说明']
+    const columnWidths = [80, 100, 60, 100, 260]
+    
+    // 表格标题
+    ctx.fillStyle = '#6366f1'
+    ctx.font = 'bold 14px Arial'
+    let xPos = 50
+    columns.forEach((col, i) => {
+      ctx.fillText(col, xPos, startY)
+      xPos += columnWidths[i]
+    })
+    
+    // 表格内容
+    ctx.fillStyle = document.body.classList.contains('dark-mode') ? '#ffffff' : '#000000'
+    ctx.font = '14px Arial'
+    
+    props.result.allocationDetails.forEach((item, index) => {
+      const yPos = startY + (index + 1) * rowHeight
+      let xPos = 50
+      
+      // 绘制每一行数据
+      ctx.fillText(item.tenantName, xPos, yPos)
+      xPos += columnWidths[0]
+      
+      ctx.fillText(item.amount.toFixed(2), xPos, yPos)
+      xPos += columnWidths[1]
+      
+      ctx.fillText((item.ratio * 100).toFixed(1) + '%', xPos, yPos)
+      xPos += columnWidths[2]
+      
+      ctx.fillText(item.allocationBasis, xPos, yPos)
+      xPos += columnWidths[3]
+      
+      // 说明文字可能较长，需要截断
+      const details = item.details.length > 30 ? item.details.substring(0, 30) + '...' : item.details
+      ctx.fillText(details, xPos, yPos)
+    })
+    
+    // 绘制总计行
+    const totalY = startY + (props.result.allocationDetails.length + 1) * rowHeight
+    ctx.font = 'bold 14px Arial'
+    ctx.fillText('总计', 50, totalY)
+    ctx.fillText(props.result.totalBill.toFixed(2), 130, totalY)
+    ctx.fillText('100%', 230, totalY)
+    
+    // 添加说明
+    const finalY = totalY + 50
+    ctx.font = '12px Arial'
+    ctx.fillStyle = '#666666'
+    ctx.fillText('说明: 以上分摊结果仅供参考，实际分摊应根据租赁合同约定执行。', 50, finalY)
+    
+    // 转换为图片并下载
+    const image = canvas.toDataURL('image/png')
+    const link = document.createElement('a')
+    link.href = image
+    link.download = `费用分摊报表_${new Date().getTime()}.png`
+    link.click()
+  } catch (error) {
+    console.error('导出图片报表失败:', error)
+    alert('导出图片报表失败，请重试')
+  }
+}
 </script>
 
 <template>
-  <div class="card">
+  <div class="card" ref="resultCard">
     <div class="card-header">
       <div class="d-flex justify-content-between align-items-center">
         <span>
           <i class="fas fa-chart-bar"></i>
-          电费分摊结果
+          费用分摊结果
         </span>
-        <button class="btn btn-sm btn-secondary" @click="recalculate">
-          <i class="fas fa-redo"></i> 重新计算
-        </button>
+        <div class="btn-group">
+          <button class="btn btn-sm btn-secondary" @click="exportAsImage">
+            <i class="fas fa-image"></i> 导出图片报表
+          </button>
+          <button class="btn btn-sm btn-secondary" @click="printAsPDF">
+            <i class="fas fa-print"></i> 打印/PDF
+          </button>
+          <button class="btn btn-sm btn-secondary" @click="recalculate">
+            <i class="fas fa-redo"></i> 重新计算
+          </button>
+        </div>
       </div>
     </div>
     
@@ -138,7 +394,7 @@ const recalculate = () => {
       <!-- 摘要卡片 -->
       <div class="summary-cards">
         <div class="summary-card">
-          <div class="summary-label">电费总额</div>
+          <div class="summary-label">费用总额</div>
           <div class="summary-value">¥{{ result.totalBill.toFixed(2) }}</div>
           <div class="summary-label">总费用</div>
         </div>
@@ -215,7 +471,7 @@ const recalculate = () => {
         分摊可视化
       </h3>
       
-      <div class="chart-container">
+      <div class="chart-container" ref="chartContainer">
         <Bar 
           v-if="chartData" 
           :data="chartData" 
@@ -438,6 +694,11 @@ const recalculate = () => {
   background-color: #64748b;
 }
 
+.btn-group {
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 768px) {
   .summary-cards {
     grid-template-columns: 1fr;
@@ -455,6 +716,10 @@ const recalculate = () => {
   .result-table th,
   .result-table td {
     padding: 10px 12px;
+  }
+  
+  .btn-group {
+    flex-wrap: wrap;
   }
 }
 </style>
