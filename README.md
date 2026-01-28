@@ -150,7 +150,7 @@ yarn build
 
 <div align="center">
   <hr width="80%">
-  <p><strong>✨ 本项目由阿里云 ESA 提供全球加速、安全防护与高性能计算支持</strong></p>
+  <p><strong>本项目由阿里云ESA提供加速、计算和保护</strong></p>
   <hr width="80%">
   <img src="https://img.alicdn.com/imgextra/i3/O1CN01H1UU3i1Cti9lYtFrs_!!6000000000139-2-tps-7534-844.png" alt="阿里云ESA" width="800" />
 </div>
