@@ -179,4 +179,4 @@ yarn build
 
 ---
 
-> ✅ **MIT License** · © 2025 xiaobo110
+> ✅ © 2025 xiaobo110
